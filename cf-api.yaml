@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: dropbox pdf ocr api stack
+Parameters:
+  account:
+    Type: String
+    Description: The acct to deploy to
+  env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: The environment where the deploy stack will be deployed
+  apibranch:
+    Type: String
+    Default: dev
+    Description: The dropbox PDF API branch to deploy
+  apibuild:
+    Type: Number
+    Default: 0
+    Description: The dropbox PDF API build number to deploy
+  debug:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: false
+Resources:
+  restApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: !Join [ '-', [ dropbox-pdf-api , !Ref env ] ]
+  dropboxPDFAPIResource:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      ParentId: !GetAtt restApi.RootResourceId
+      PathPart: dropbox-pdf
+      RestApiId: !Ref restApi
+  dropboxAPIResource:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      ParentId: !Ref dropboxPDFAPIResource
+      PathPart: ocr
+      RestApiId: !Ref restApi
+  dropboxPDFAPIMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: 'ANY'
+      ResourceId: !Ref dropboxAPIResource
+      RestApiId: !Ref restApi
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: 'POST'
+        Uri: !Join
+          - ''
+          - - 'arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:'
+            - !Ref account
+            - ':function:'
+            - !Join [ '-', [ 'dropbox-pdf-api', !Ref 'env' ]]
+            - '/invocations'

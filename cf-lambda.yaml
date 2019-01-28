@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: dropbox pdf api lambda stack
+Parameters:
+  env:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: The environment where the deploy stack will be deployed
+  debug:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: false
+  region:
+    Type: String
+    Default: us-east-1
+    Description: The region to deploy
+  apibranch:
+    Type: String
+    Default: dev
+    Description: The user API match branch to deploy
+  apibuild:
+    Type: Number
+    Default: 0
+    Description: The user API match build number to deploy
+  api:
+    Type: String
+    Description: Resource ID of the API Gateway
+  account:
+    Type: String
+    Description: The acct to deploy to
+  dropboxWebhookSecret:
+    Type: String
+    Description: Secret used to sign/verify Dropbox webhook invocation
+  dropboxAppToken:
+    Type: String
+    Description: Secret used to authenticate as registered app with access to an app folder in accounts that install it
+Resources:
+  dropboxPDFLambdaFunction:
+    Type: "AWS::Lambda::Function"
+    DependsOn: dropboxAPILambdaRole
+    Properties:
+      FunctionName: !Join [ '-', [ 'dropbox-pdf-api', !Ref 'env' ]]
+      Code:
+        S3Bucket: "meadowbrook-build-deploy"
+        S3Key: !Join [ '/', [ 'datachase/dropbox-pdf-ocr-api', !Ref apibranch, !Ref apibuild, 'lambda_function.zip' ]]
+      Handler: lambda_function.lambda_handler
+      Description: Lambda function for matching user data
+      Environment:
+        Variables:
+          env: !Ref env
+          dropbox_webhook_secret: !Ref 'dropboxWebhookSecret'
+          dropbox_app_token: !Ref 'dropboxAppToken'
+          s3_bucket: "meadowbrook-dropbox-pdf-ocr-api"
+          s3_path: "cursor"
+      MemorySize: 128
+      Role: !GetAtt dropboxAPILambdaRole.Arn
+      Runtime: python3.6
+      Timeout: 10
+      DeadLetterConfig:
+        TargetArn: !Join [ '', [ !Ref region, !Ref account, ':dropbox-pdf-api-dead-', !Ref 'env' ]]
+      Tags:
+        -
+          Key: "agsu:env"
+          Value: !Ref env
+        -
+          Key: "agsu:product"
+          Value: datachase
+        -
+          Key: "agsu:subproduct"
+          Value: dropbox-pdf-ocr-api
+        -
+          Key: "agsu:owner"
+          Value: cloudops@meadowbrook.com
+
+  deadLetterSns:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: !Join [ '-', [ 'dropbox-pdf-api-dead', !Ref 'env' ]]
+      TopicName: !Join [ '-', [ 'dropbox-pdf-api-dead', !Ref 'env' ]]
+  dropboxAPIInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: dropboxPDFLambdaFunction
+    Properties:
+      FunctionName: !GetAtt dropboxPDFLambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:555:*/*/*/dropbox-pdf/ocr
+  dropboxAPILambdaRole:
+    Type: "AWS::IAM::Role"
+    DependsOn: deadLetterSns
+    Properties:
+      RoleName: !Join [ '-', [ 'dropbox-pdf-api', !Ref 'env' ]]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: !Join [ '-', [ 'dropbox-pdf-api-lambda', !Ref 'env' ]]
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sns:publish
+            Resource: !Join [ '', [ 'arn:aws:sns:us-east-1:', !Ref 'account', ':dropbox-pdf-api-dead-', !Ref 'env' ]]
+          - Effect: Allow
+            Action:
+            - logs:*
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+            Resource:
+              Fn:: !Join ['', ['arn:aws:s3:::meadowbrook-dropbox-pdf-ocr-api', '/*']]
+          Principal:
+            Service:
+            - lambda.amazonaws.com
