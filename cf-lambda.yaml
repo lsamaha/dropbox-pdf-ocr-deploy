@@ -47,7 +47,7 @@ Resources:
         - python3.6
       Content:
         S3Bucket: meadowbrook-build-deploy
-        S3Key: datachase/dropbox-pdf-ocr-layer/master/0/ocr-layer.zip
+        S3Key: datachase/dropbox-pdf-ocr-layer/master/3/ocr-layer.zip
       Description: tesseract ocr layer
       LayerName: ocr-layer
   dropboxPDFLambdaFunction:
@@ -59,7 +59,7 @@ Resources:
         S3Bucket: "meadowbrook-build-deploy"
         S3Key: !Join [ '/', [ 'datachase/dropbox-pdf-ocr-api', !Ref apibranch, !Ref apibuild, 'lambda_function.zip' ]]
       Layers:
-        - !Join [ '', [ 'arn:aws:lambda:', !Ref region, ':', !Ref account, ':layer:ocr-layer:9' ]]
+        - !Join [ '', [ 'arn:aws:lambda:', !Ref region, ':', !Ref account, ':layer:ocr-layer:12' ]]
       Handler: lambda_function.lambda_handler
       Description: Lambda function for matching user data
       Environment:
@@ -69,11 +69,14 @@ Resources:
           dropbox_app_token: !Ref 'dropboxAppToken'
           s3_bucket: 'meadowbrook-dropbox-pdf-ocr-api'
           s3_path: cursor
+          max_workers: 4
+          resolution: 100
+          TESSDATA_PREFIX: /opt/data/tessdata
           LC_ALL: C
-      MemorySize: 128
+      MemorySize: 3008
       Role: !GetAtt dropboxAPILambdaRole.Arn
       Runtime: python3.6
-      Timeout: 120
+      Timeout: 900
       DeadLetterConfig:
         TargetArn: !Join [ '', [ 'arn:aws:sns:', !Ref region, ':', !Ref account, ':dropbox-pdf-api-dead-', !Ref 'env' ]]
       Tags:
