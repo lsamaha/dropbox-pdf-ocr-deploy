@@ -5,24 +5,28 @@ import logging
 from botocore.exceptions import ClientError, WaiterError
 
 __env_account_config = {
-    "dev": "555"
+    "dev": "0"
 }
 
 __logger = logging.getLogger()
 
 @click.command()
+@click.option('--account')
 @click.option('--apitemplate', default="cf-api.yaml")
 @click.option('--lambdatemplate', default="cf-lambda.yaml")
 @click.option('--apistackname', default="dropbox-pdf-api-dev")
 @click.option('--lambdastackname', default="dropbox-pdf-lambda-dev")
 @click.option('--env', required=True, type=click.Choice(['dev', 'test', 'prod']))
-@click.option('--apibranch', required=True)
+@click.option('--apibranch')
 @click.option('--apibuild', required=True)
+@click.option('--dropbox_webhook_secret', required=True)
+@click.option('--dropbox_app_token', required=True)
 @click.option('--debug', is_flag=True, default=False)
-def main(apitemplate, lambdatemplate, apistackname, lambdastackname, env, apibranch, apibuild, debug):
+def main(account, apitemplate, lambdatemplate, apistackname, lambdastackname, env, apibranch, apibuild,
+         dropbox_webhook_secret, dropbox_app_token, debug):
     # configure
     configure_logging(debug)
-    account = __env_account_config[env] if env in __env_account_config else None
+    account = account or (__env_account_config[env] if env in __env_account_config else None)
     apistackname = name_for_env(apistackname, env)
     lambdastackname = name_for_env(lambdastackname, env)
     cf_client = boto3.client('cloudformation')
@@ -36,6 +40,8 @@ def main(apitemplate, lambdatemplate, apistackname, lambdastackname, env, apibra
         {'ParameterKey': 'account', 'ParameterValue': account},
         {'ParameterKey': 'apibranch', 'ParameterValue': apibranch},
         {'ParameterKey': 'apibuild', 'ParameterValue': apibuild},
+        {'ParameterKey': 'dropboxWebhookSecret', 'ParameterValue': dropbox_webhook_secret},
+        {'ParameterKey': 'dropboxAppToken', 'ParameterValue': dropbox_app_token},
         {'ParameterKey': 'debug', 'ParameterValue': str(debug).lower()}
     ]
     api_update_resp = deploy_stack(stack_name=apistackname,

@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: User recombination API stack
+Description: dropbox pdf ocr api stack
 Parameters:
   account:
     Type: String
-    Default: 484228820456
     Description: The acct to deploy to
   env:
     Type: String
