@@ -21,9 +21,10 @@ __logger = logging.getLogger()
 @click.option('--apibuild', required=True)
 @click.option('--dropbox_webhook_secret', required=True)
 @click.option('--dropbox_app_token', required=True)
+@click.option('--dropbox_input_path', default="/app/input")
 @click.option('--debug', is_flag=True, default=False)
 def main(account, apitemplate, lambdatemplate, apistackname, lambdastackname, env, apibranch, apibuild,
-         dropbox_webhook_secret, dropbox_app_token, debug):
+         dropbox_webhook_secret, dropbox_app_token, dropbox_input_path, debug):
     # configure
     configure_logging(debug)
     account = account or (__env_account_config[env] if env in __env_account_config else None)
@@ -42,6 +43,7 @@ def main(account, apitemplate, lambdatemplate, apistackname, lambdastackname, en
         {'ParameterKey': 'apibuild', 'ParameterValue': apibuild},
         {'ParameterKey': 'dropboxWebhookSecret', 'ParameterValue': dropbox_webhook_secret},
         {'ParameterKey': 'dropboxAppToken', 'ParameterValue': dropbox_app_token},
+        {'ParameterKey': 'dropboxInputPath', 'ParameterValue': dropbox_input_path},
         {'ParameterKey': 'debug', 'ParameterValue': str(debug).lower()}
     ]
     api_update_resp = deploy_stack(stack_name=apistackname,

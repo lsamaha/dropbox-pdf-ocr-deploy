@@ -39,6 +39,10 @@ Parameters:
   dropboxAppToken:
     Type: String
     Description: Secret used to authenticate as registered app with access to an app folder in accounts that install it
+  dropboxInputPath:
+    Type: String
+    Description: Path to look for input in Dropbox
+    Default: /app/input
 Resources:
   ocrLambdaLayer:
     Type: "AWS::Lambda::LayerVersion"
@@ -67,6 +71,7 @@ Resources:
           env: !Ref env
           dropbox_webhook_secret: !Ref 'dropboxWebhookSecret'
           dropbox_app_token: !Ref 'dropboxAppToken'
+          dropbox_input_path: !Ref 'dropboxInputPath'
           s3_bucket: 'meadowbrook-dropbox-pdf-ocr-api'
           s3_path: cursor
           max_workers: 4
